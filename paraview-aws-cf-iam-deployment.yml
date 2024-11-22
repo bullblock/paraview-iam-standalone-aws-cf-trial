@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Paraview IAM Standalone Trial edition for AWS Cloudformation Template ver 1.0
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      ami: ami-026ffa7d5341d7ca0
+    ap-southeast-1:
+      ami: ami-04d77062c2dad3412
+    ap-east-1:
+      ami: ami-0c525dee7f47ab83e
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Select an existing VPC
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Select a public subnet within the chosen VPC
+
+  InstanceType:
+    Type: String
+    Default: t2.xlarge
+    Description: Select the EC2 instance type
+    AllowedValues:
+      - t2.xlarge
+      - t3.xlarge
+      - m5.xlarge
+      - m4.xlarge
+
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select the existing key pair
+    ConstraintDescription: Select the existing key pair
+
+Resources:
+  WaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  WaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Handle: !Ref WaitHandle
+      Timeout: '2700'
+      Count: 1
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: para-iam-IAMRole-trial
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: para-iam-IAMPolicy-trial
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeVpcs
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: para-iam-IAMRole-trial
+
+  GetVpcCidrFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: para-iam-LambdaFunction-trial
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          def handler(event, context):
+              ec2 = boto3.client('ec2')
+              vpc_id = event['ResourceProperties']['VpcId']
+              try:
+                  response = ec2.describe_vpcs(VpcIds=[vpc_id])
+                  cidr_block = response['Vpcs'][0]['CidrBlock']
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'VpcCidr': cidr_block})
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+      Timeout: 60
+      Tags:
+        - Key: Name
+          Value: para-iam-LambdaFunction-trial
+
+  VpcCidrCustomResource:
+    Type: Custom::GetVpcCidr
+    Properties:
+      ServiceToken: !GetAtt GetVpcCidrFunction.Arn
+      VpcId: !Ref VpcId
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: para-iam-SecurityGroup-trial
+      GroupDescription: Security group with specific ingress rules
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        # Allow SSH (port 22) from anywhere
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+        # Allow HTTPS (port 443) from anywhere
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+        # Allow HTTP (port 80) from anywhere
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+        # Allow traffic on port 10000 from anywhere
+        - IpProtocol: tcp
+          FromPort: 10000
+          ToPort: 10000
+          CidrIp: 0.0.0.0/0
+
+        # Allow all traffic within the VPC CIDR range
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !GetAtt VpcCidrCustomResource.VpcCidr
+      Tags:
+        - Key: Name
+          Value: para-iam-SecurityGroup-trial
+
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: para-iam-EIP-trial
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', ami]
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash
+          cd /home/devops/latest
+          ./auto_deploy.sh
+          cd /root/
+          rm -rf /home/devops
+          sudo userdel -rf devops
+          sleep 1m
+          echo "***end of ansible playbook deployment***"
+          /opt/aws/bin/cfn-signal -e $? '${WaitHandle}' 
+      Tags:
+        - Key: Name
+          Value: para-iam-EC2Instance-trial
+
+  EIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      InstanceId: !Ref EC2Instance
+
+Outputs:
+  InstanceId:
+    Description: ID of the EC2 instance
+    Value: !Ref EC2Instance
+
+  PublicIP:
+    Description: Public IP address of the EC2 instance
+    Value: !Ref ElasticIP
+
+  DeploymentMessage:
+    Description: The final output of the deployment
+    Value: !Sub |
+      Access portal: http://${ElasticIP} with credentail: sysadmin/Parav1ew! Please contact marketing@paraviewsoft.com for the trial license. Thanks!
