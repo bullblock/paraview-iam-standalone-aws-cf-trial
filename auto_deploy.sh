@@ -29,6 +29,21 @@ sudo sed -i "s/ansible_ssh_pass=123456/ansible_ssh_pass=${ssh_pass}/g" inventory
 # modify ansible sudo password (if needed) (some as the ssh user's password)
 sudo sed -i "s/ansible_become_pass=123456/ansible_become_pass=${ssh_pass}/g" inventory
 
+# download iam trial lic
+rm -f iam-600-trial.lic
+curl --user-agent "paraview" -o iam-600-trial.lic 'https://paraview-public-trial-license.s3.ap-southeast-1.amazonaws.com/iam-600-trial.lic'
+lic_string="$(cat iam-600-trial.lic)"
+
+# make update_lic.sql
+cat > ./update_lic.sql << EOF
+-- import trial license
+truncate table sys_license;
+INSERT INTO sys_license VALUES (1111111111111111111, 'sysadmin', 'sysadmin', '2025-01-01 00:00:00', '2025-01-01 00:00:00', 'paraview', '${lic_string}');
+EOF
+
+# add sql to idm-6.0.0.1.sql
+cat update_lic.sql >> ${script_dir}/tarballs/sql/6.0.2/6.0.0.1/6.0.0.1-idm.sql
+rm -f update_lic.sql
 
 # begin install
 sudo bash install.sh

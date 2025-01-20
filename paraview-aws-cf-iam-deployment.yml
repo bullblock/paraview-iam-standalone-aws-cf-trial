@@ -4,11 +4,17 @@ Description: Paraview IAM Standalone Trial edition for AWS Cloudformation Templa
 Mappings:
   RegionMap:
     us-east-1:
-      ami: ami-026ffa7d5341d7ca0
+      ami: ami-059f025d1153e50cd
+    us-east-2:
+      ami: ami-0218bd88b58dfad28
+    us-west-1:
+      ami: ami-0e9975b7949be6501
+    us-west-2:
+      ami: ami-0a410ccf92c3e8627
     ap-southeast-1:
-      ami: ami-04d77062c2dad3412
+      ami: ami-03bbe8d570b61bcd4
     ap-east-1:
-      ami: ami-0c525dee7f47ab83e
+      ami: ami-0c845b72bdb5c19b7
 
 Parameters:
   VpcId:
@@ -124,12 +130,6 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
-
-        # Allow traffic on port 10000 from anywhere
-        - IpProtocol: tcp
-          FromPort: 10000
-          ToPort: 10000
           CidrIp: 0.0.0.0/0
 
         # Allow all traffic within the VPC CIDR range
