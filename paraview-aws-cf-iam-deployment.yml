@@ -114,12 +114,6 @@ Resources:
       GroupDescription: Security group with specific ingress rules
       VpcId: !Ref VpcId
       SecurityGroupIngress:
-        # Allow SSH (port 22) from anywhere
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-
         # Allow HTTPS (port 443) from anywhere
         - IpProtocol: tcp
           FromPort: 443
