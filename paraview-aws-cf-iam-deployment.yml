@@ -41,10 +41,10 @@ Parameters:
     ConstraintDescription: Select the existing key pair
 
   SshCidr:
-    Description: "Please enter the CIDR block for SSH access (e.g., 0.0.0.0/0 or 192.168.0.0/16)"
+    Description: 'Please enter the CIDR block for SSH access (e.g., 0.0.0.0/0 or 192.168.0.0/16)'
     Type: String
-    AllowedPattern: "^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]|[1-2][0-9]|3[0-2])$"
-    ConstraintDescription: "Must be a valid CIDR block in the format x.x.x.x/n"
+    AllowedPattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]|[1-2][0-9]|3[0-2])$'
+    ConstraintDescription: 'Must be a valid CIDR block in the format x.x.x.x/n'
 
 Resources:
   WaitHandle:
