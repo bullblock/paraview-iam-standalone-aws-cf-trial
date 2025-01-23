@@ -40,6 +40,12 @@ Parameters:
     Description: Select the existing key pair
     ConstraintDescription: Select the existing key pair
 
+  SshCidr:
+    Description: "Please enter the CIDR block for SSH access (e.g., 0.0.0.0/0 or 192.168.0.0/16)"
+    Type: String
+    AllowedPattern: "^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]|[1-2][0-9]|3[0-2])$"
+    ConstraintDescription: "Must be a valid CIDR block in the format x.x.x.x/n"
+
 Resources:
   WaitHandle:
     Type: AWS::CloudFormation::WaitConditionHandle
@@ -114,11 +120,11 @@ Resources:
       GroupDescription: Security group with specific ingress rules
       VpcId: !Ref VpcId
       SecurityGroupIngress:
-        # Allow SSH (port 22) from anywhere
+        # Allow SSH (port 22) from SshCidr
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0
+          CidrIp: !Ref SshCidr
 
         # Allow HTTPS (port 443) from anywhere
         - IpProtocol: tcp
