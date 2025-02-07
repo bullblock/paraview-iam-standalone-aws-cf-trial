@@ -197,4 +197,4 @@ Outputs:
   DeploymentMessage:
     Description: The final output of the deployment
     Value: !Sub |
-      Access portal: http://${ElasticIP} with credentail: sysadmin/Parav1ew! Please contact marketing@paraviewsoft.com for the trial license. Thanks!
+      Access portal: http://${ElasticIP} with credentail: sysadmin/Parav1ew! You will have 7 days license for your evaluation and testing. Thanks!
